@@ -5,3 +5,4 @@ Git tracks changes of files.
 reating a new branch is quick.
 create a new branch again and simple.
 add merge.
+test stash.
