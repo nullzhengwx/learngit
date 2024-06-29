@@ -1,26 +1,37 @@
-WITH RECURSIVE dates AS (
-    SELECT DATE_TRUNC('month', CURRENT_DATE) AS date_value -- 当前年的第一个月份
+WITH RECURSIVE months AS (
+    SELECT DATE_TRUNC('month', CURRENT_DATE) AS month_start -- 当前年的第一个月份
     UNION ALL
-    SELECT date_value + INTERVAL '1 month'
-    FROM dates
-    WHERE date_value < DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day' -- 当前年的最后一个月份
+    SELECT month_start + INTERVAL '1 month'
+    FROM months
+    WHERE month_start < DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day' -- 当前年的最后一个月份
+),
+days_in_month AS (
+    SELECT
+        month_start,
+        EXTRACT(MONTH FROM month_start) AS month,
+        generate_series(
+            month_start,
+            DATE_TRUNC('month', month_start) + INTERVAL '1 month' - INTERVAL '1 day',
+            INTERVAL '1 day'
+        ) AS day
+    FROM
+        months
 ),
 workdays AS (
     SELECT
-        date_value,
-        EXTRACT(MONTH FROM date_value) AS month,
-        ROW_NUMBER() OVER (PARTITION BY EXTRACT(MONTH FROM date_value) ORDER BY date_value DESC) AS rn
+        month_start,
+        month,
+        MAX(day) AS last_workday
     FROM
-        dates
+        days_in_month
     WHERE
-        EXTRACT(ISODOW FROM date_value) < 6 -- 排除周末（星期六和星期日）
-),
-last_workday AS (
-    SELECT
-        date_value AS last_workday
-    FROM
-        workdays
-    WHERE
-        rn = 1 -- 每个月的最后一个工作日
+        EXTRACT(ISODOW FROM day) < 6 -- 排除周末（星期六和星期日）
+    GROUP BY
+        month_start, month
 )
-SELECT * FROM last_workday;
+SELECT
+    TO_CHAR(last_workday, 'YYYY-MM-DD') AS last_workday
+FROM
+    workdays
+ORDER BY
+    month;
