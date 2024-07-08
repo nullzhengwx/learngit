@@ -1,42 +1,29 @@
-from datetime import datetime, timedelta
+import datetime
 
-def get_last_friday():
-    today = datetime.today()
-    offset = (today.weekday() - 4) % 7  # 4表示周五对应的weekday，计算当前日期到上一个周五的偏移量
-    last_friday = today - timedelta(days=offset)
-    return last_friday.date()
-
-# 示例用法
-last_friday = get_last_friday()
-print("上一周周五的日期:", last_friday)
-
-
-========
-
-
-ChatGPT
-要获取上一个月的最后一个工作日的日期，可以结合使用 Python 的 datetime 和 calendar 模块。下面是一个实现的示例代码：
-
-python
-复制代码
-from datetime import datetime, timedelta
-import calendar
-
-def last_workday_of_previous_month():
-    today = datetime.today()
-    # 计算上一个月的年份和月份
-    if today.month == 1:
-        previous_month_year = today.year - 1
-        previous_month = 12
+def is_last_workday(date):
+    # 获取给定日期的月份和年份
+    month = date.month
+    year = date.year
+    
+    # 确定该月份的最后一天是哪一天
+    if month == 12:
+        last_day_of_month = datetime.date(year, 12, 31)
     else:
-        previous_month_year = today.year
-        previous_month = today.month - 1
+        last_day_of_month = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
     
-    # 获取上一个月的最后一天日期
-    last_day_of_previous_month = datetime(previous_month_year, previous_month, 1) - timedelta(days=1)
-    
-    # 找到上一个月的最后一个工作日日期
-    while last_day_of_previous_month.weekday() > calendar.FRIDAY:
-        last_day_of_previous_month -= timedelta(days=1)
-    
-    return last_day_of_previous_month.date()
+    # 判断最后一天是否为工作日（星期一到星期五）
+    if last_day_of_month.weekday() < 5:  # 0是星期一，4是星期五
+        # 如果是工作日，则判断给定日期是否为最后一个工作日
+        return date == last_day_of_month
+    else:
+        # 如果最后一天不是工作日，则向前找到最近的工作日
+        # 这里假设工作日不考虑法定节假日等情况，实际应用中可能需要更复杂的逻辑
+        while last_day_of_month.weekday() >= 5:  # 大于等于5表示周末
+            last_day_of_month -= datetime.timedelta(days=1)
+        
+        # 最后一天如果是工作日，再判断是否为给定日期
+        return date == last_day_of_month
+
+# 测试代码
+given_date = datetime.date(2024, 7, 5)  # 给定日期
+print(is_last_workday(given_date))  # 判断是否为该月份的最后一个工作日
