@@ -7,10 +7,10 @@ import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.PutObjectRequest
 
-class S3Client(accessKey: String, secretKey: String, endpoint: String, region: String) {
+class S3Client(accessKey: String, secretKey: String, endpoint: String) {
   private val credentials = new BasicAWSCredentials(accessKey, secretKey)
   private val s3Client: AmazonS3 = AmazonS3ClientBuilder.standard()
-    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, region))
+    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, null)) // null for region
     .withCredentials(new AWSStaticCredentialsProvider(credentials))
     .withPathStyleAccessEnabled(true) // For custom endpoints
     .build()
@@ -21,17 +21,18 @@ class S3Client(accessKey: String, secretKey: String, endpoint: String, region: S
       throw new IllegalArgumentException(s"$dirPath is not a valid directory")
     }
 
+    // Upload files and directories
     directory.listFiles().foreach { file =>
+      val s3Key = s3BasePath + file.getName
       if (file.isDirectory) {
-        uploadDirectory(bucketName, file.getAbsolutePath, s3BasePath + file.getName + "/")
+        uploadDirectory(bucketName, file.getAbsolutePath, s3Key + "/")
       } else {
-        uploadFile(bucketName, file, s3BasePath)
+        uploadFile(bucketName, file, s3Key)
       }
     }
   }
 
-  private def uploadFile(bucketName: String, file: File, s3BasePath: String): Unit = {
-    val s3Key = s3BasePath + file.getName
+  private def uploadFile(bucketName: String, file: File, s3Key: String): Unit = {
     val putRequest = new PutObjectRequest(bucketName, s3Key, file)
     s3Client.putObject(putRequest)
     println(s"Uploaded: $s3Key")
@@ -44,11 +45,11 @@ object S3Uploader {
     val accessKey = "YOUR_ACCESS_KEY"
     val secretKey = "YOUR_SECRET_KEY"
     val endpoint = "YOUR_CUSTOM_ENDPOINT"
-    val region = "YOUR_REGION"
     val bucketName = "YOUR_BUCKET_NAME"
     val directoryPath = "YOUR_DIRECTORY_PATH"
 
-    val s3Client = new S3Client(accessKey, secretKey, endpoint, region)
-    s3Client.uploadDirectory(bucketName, directoryPath)
+    val baseName = new File(directoryPath).getName + "/" // 仅取目录名
+    val s3Client = new S3Client(accessKey, secretKey, endpoint)
+    s3Client.uploadDirectory(bucketName, directoryPath, baseName)
   }
 }
