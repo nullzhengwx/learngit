@@ -1,29 +1,54 @@
-import datetime
+import java.io.File
+import java.nio.file.{Files, Paths}
+import com.amazonaws.auth.AWSStaticCredentialsProvider
+import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.client.builder.AwsClientBuilder
+import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.PutObjectRequest
 
-def is_last_workday(date):
-    # 获取给定日期的月份和年份
-    month = date.month
-    year = date.year
-    
-    # 确定该月份的最后一天是哪一天
-    if month == 12:
-        last_day_of_month = datetime.date(year, 12, 31)
-    else:
-        last_day_of_month = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
-    
-    # 判断最后一天是否为工作日（星期一到星期五）
-    if last_day_of_month.weekday() < 5:  # 0是星期一，4是星期五
-        # 如果是工作日，则判断给定日期是否为最后一个工作日
-        return date == last_day_of_month
-    else:
-        # 如果最后一天不是工作日，则向前找到最近的工作日
-        # 这里假设工作日不考虑法定节假日等情况，实际应用中可能需要更复杂的逻辑
-        while last_day_of_month.weekday() >= 5:  # 大于等于5表示周末
-            last_day_of_month -= datetime.timedelta(days=1)
-        
-        # 最后一天如果是工作日，再判断是否为给定日期
-        return date == last_day_of_month
+class S3Client(accessKey: String, secretKey: String, endpoint: String, region: String) {
+  private val credentials = new BasicAWSCredentials(accessKey, secretKey)
+  private val s3Client: AmazonS3 = AmazonS3ClientBuilder.standard()
+    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, region))
+    .withCredentials(new AWSStaticCredentialsProvider(credentials))
+    .withPathStyleAccessEnabled(true) // For custom endpoints
+    .build()
 
-# 测试代码
-given_date = datetime.date(2024, 7, 5)  # 给定日期
-print(is_last_workday(given_date))  # 判断是否为该月份的最后一个工作日
+  def uploadDirectory(bucketName: String, dirPath: String, s3BasePath: String = ""): Unit = {
+    val directory = new File(dirPath)
+    if (!directory.exists() || !directory.isDirectory) {
+      throw new IllegalArgumentException(s"$dirPath is not a valid directory")
+    }
+
+    directory.listFiles().foreach { file =>
+      if (file.isDirectory) {
+        uploadDirectory(bucketName, file.getAbsolutePath, s3BasePath + file.getName + "/")
+      } else {
+        uploadFile(bucketName, file, s3BasePath)
+      }
+    }
+  }
+
+  private def uploadFile(bucketName: String, file: File, s3BasePath: String): Unit = {
+    val s3Key = s3BasePath + file.getName
+    val putRequest = new PutObjectRequest(bucketName, s3Key, file)
+    s3Client.putObject(putRequest)
+    println(s"Uploaded: $s3Key")
+  }
+}
+
+// 示例用法
+object S3Uploader {
+  def main(args: Array[String]): Unit = {
+    val accessKey = "YOUR_ACCESS_KEY"
+    val secretKey = "YOUR_SECRET_KEY"
+    val endpoint = "YOUR_CUSTOM_ENDPOINT"
+    val region = "YOUR_REGION"
+    val bucketName = "YOUR_BUCKET_NAME"
+    val directoryPath = "YOUR_DIRECTORY_PATH"
+
+    val s3Client = new S3Client(accessKey, secretKey, endpoint, region)
+    s3Client.uploadDirectory(bucketName, directoryPath)
+  }
+}
