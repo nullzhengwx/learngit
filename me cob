@@ -1,36 +1,3 @@
-class S3Client(accessKey: String, secretKey: String, endpoint: String) {
-  private val credentials = new BasicAWSCredentials(accessKey, secretKey)
-  private val s3Client: AmazonS3 = AmazonS3ClientBuilder.standard()
-    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, null)) // null for region
-    .withCredentials(new AWSStaticCredentialsProvider(credentials))
-    .withPathStyleAccessEnabled(true) // For custom endpoints
-    .build()
-
-  def uploadDirectory(bucketName: String, dirPath: String, basePath: String): Unit = {
-    val directory = new File(dirPath)
-    if (!directory.exists() || !directory.isDirectory) {
-      throw new IllegalArgumentException(s"$dirPath is not a valid directory")
-    }
-
-    // Upload files and directories
-    directory.listFiles().foreach { file =>
-      val s3Key = getRelativePath(file, basePath)
-      if (file.isDirectory) {
-        uploadDirectory(bucketName, file.getAbsolutePath, basePath)
-      } else {
-        uploadFile(bucketName, file, s3Key)
-      }
-    }
-  }
-
-  private def getRelativePath(file: File, basePath: String): String = {
-    val relativePath = file.getAbsolutePath.stripPrefix(basePath + File.separator)
-    relativePath.replace(File.separator, "/") // 转换为正斜杠
-  }
-
-  private def uploadFile(bucketName: String, file: File, s3Key: String): Unit = {
-    val putRequest = new PutObjectRequest(bucketName, s3Key, file)
-    s3Client.putObject(putRequest)
-    println(s"Uploaded: $s3Key")
-  }
-}
+<div style="height: 300px; display: flex; justify-content: center; align-items: center; text-align: center; line-height: 1.5;">
+    <p style="font-size: 24px;">文本内容居中显示</p>
+</div>
