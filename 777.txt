@@ -1,1 +1,80 @@
-7777777777777777777777
+在 Caffeine 缓存库中，你可以通过 asMap() 方法将缓存转换为一个 ConcurrentMap，然后使用 keySet() 方法来获取当前缓存中所有的键。以下是具体的实现方式：
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
+import java.util.Set;
+
+public class CacheExample {
+    public static void main(String[] args) {
+        // 创建一个 Caffeine 缓存
+        Cache<String, Object> cache = Caffeine.newBuilder()
+            .maximumSize(100)
+            .build();
+
+        // 插入一些缓存条目
+        cache.put("key1", "value1");
+        cache.put("key2", "value2");
+        cache.put("key3", "value3");
+
+        // 获取所有的 key
+        Set<String> keys = cache.asMap().keySet();
+
+        // 打印所有的 key
+        for (String key : keys) {
+            System.out.println("Key: " + key);
+        }
+    }
+}
+
+解释
+cache.asMap()：将缓存转换为 ConcurrentMap。这个 Map 视图反映了缓存的当前内容，任何对它的更改都会影响到缓存本身。
+
+keySet()：返回缓存中所有键的 Set 视图。
+
+注意
+线程安全：Caffeine 的缓存是线程安全的，使用 asMap().keySet() 获取的键集同样是线程安全的。
+性能：调用 asMap().keySet() 方法是一个轻量级操作，但如果缓存很大，遍历键集可能会有性能开销，特别是在高并发环境下。
+通过这种方式，你可以方便地获取缓存中的所有键，并对其进行遍历或进一步处理。
+
+==========================
+在 Caffeine 缓存库中，你可以通过以下几种方式获取缓存的过期时间或剩余的有效期。
+
+1. 通过 expireAfter 配置
+在创建缓存时，你可以使用 expireAfter 方法设置过期策略：
+Cache<String, Object> cache = Caffeine.newBuilder()
+    .expireAfterWrite(10, TimeUnit.MINUTES)  // 设置写入后10分钟过期
+    .build();
+
+但是，Caffeine 并没有提供直接获取某个键的具体过期时间的方法。如果你需要追踪或获取剩余时间，通常需要在应用程序层面进行管理。
+
+2. 使用 Policy API 获取剩余时间
+Caffeine 提供了一个 Policy API，可以让你查询某些缓存条目的剩余生存时间（TTL）。你可以使用 policy() 方法来访问缓存的配置策略：
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Policy;
+
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+public class CacheExample {
+    public static void main(String[] args) {
+        Cache<String, Object> cache = Caffeine.newBuilder()
+            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .build();
+
+        // 插入一个缓存条目
+        cache.put("key", "value");
+
+        // 获取缓存条目的剩余生存时间
+        Optional<Long> remainingTtl = cache.policy().expireAfterWrite().get().expiresAfter("key", TimeUnit.MILLISECONDS);
+
+        remainingTtl.ifPresent(ttl -> System.out.println("Remaining TTL: " + ttl + " milliseconds"));
+    }
+}
+解释
+policy().expireAfterWrite()：访问缓存的写入后过期策略。
+expiresAfter(key, TimeUnit)：获取指定键的剩余生存时间。如果键存在且未过期，返回一个包含剩余生存时间的 Optional 对象；否则返回 Optional.empty()。
+注意事项
+Caffeine 的 Policy API 只能获取过期策略信息，不能直接获取初始过期时间点或设定时间。因此，需要你在应用逻辑中合理设计，以确保符合你的需求。
+如果缓存条目不存在或者已经过期，则返回的 Optional 对象将是 empty。
+通过上述方法，你可以获取缓存条目的剩余生存时间并根据需要进行处理。
